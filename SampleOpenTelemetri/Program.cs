@@ -33,10 +33,9 @@ builder.Services.AddOpenTelemetry()
 
         // Ensure the TracerProvider subscribes to any custom ActivitySources.
         traceBuilder
-            .AddSource(Instrumentation.ActivitySourceName)
-            .SetSampler(new AlwaysOnSampler())
             .AddHttpClientInstrumentation()
-            .AddAspNetCoreInstrumentation();
+            .AddAspNetCoreInstrumentation()
+            .AddSqlClientInstrumentation();
 
         // Use IConfiguration binding for AspNetCore instrumentation options.
         builder.Services.Configure<AspNetCoreInstrumentationOptions>(
