@@ -28,9 +28,6 @@ namespace A.Controllers
             var httpclient = new HttpClient();
             await httpclient.GetAsync("http://google.com");
 
-
-            await Task.Delay(TimeSpan.FromSeconds(10));
-
             return Enumerable.Range(1, 5).Select(index => new WeatherForecast
             {
                 Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
