@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Reflection.PortableExecutable;
 using A;
+using Microsoft.Extensions.Options;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Instrumentation.AspNetCore;
 using OpenTelemetry.Resources;
@@ -70,8 +71,12 @@ builder.Services.AddOpenTelemetry()
             case "otlp":
                 traceBuilder.AddOtlpExporter(otlpOptions =>
                 {
-                    // Use IConfiguration directly for Otlp exporter endpoint option.
-                    otlpOptions.Endpoint = new Uri(builder.Configuration.GetValue<string>("OpenTelemetry:Otlp:Endpoint"));
+                    var serverUrl = builder.Configuration.GetValue<string>("OpenTelemetry:Otlp:ElasticApm:ServerUrl");
+                    var token = builder.Configuration.GetValue<string>("OpenTelemetry:Otlp:ElasticApm:SecretToken");
+
+                    otlpOptions.Endpoint = new Uri(serverUrl);
+                    otlpOptions.Headers = $"Authorization= ApiKey {token}";
+
                 });
                 break;
 
