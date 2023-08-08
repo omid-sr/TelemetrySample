@@ -69,6 +69,8 @@ builder.Services.AddOpenTelemetry()
                 break;
 
             case "otlp":
+
+                //here we are using elastic apm with otlp exporter
                 traceBuilder.AddOtlpExporter(otlpOptions =>
                 {
                     var serverUrl = builder.Configuration.GetValue<string>("OpenTelemetry:Otlp:ElasticApm:ServerUrl");
@@ -76,7 +78,6 @@ builder.Services.AddOpenTelemetry()
 
                     otlpOptions.Endpoint = new Uri(serverUrl);
                     otlpOptions.Headers = $"Authorization= ApiKey {token}";
-
                 });
                 break;
 
