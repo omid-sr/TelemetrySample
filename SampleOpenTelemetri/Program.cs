@@ -31,6 +31,11 @@ builder.Services.AddOpenTelemetry()
     .WithTracing(traceBuilder =>
     {
         // Tracing
+        //traceBuilder.AddAspNetCoreInstrumentation(o =>
+        //{
+        //    o.Filter = ctx => ctx.Request.Path.Value.StartsWith("api");
+        //    o.RecordException = true;
+        //});
 
         // Ensure the TracerProvider subscribes to any custom ActivitySources.
         traceBuilder
@@ -104,8 +109,3 @@ app.MapControllers();
 
 app.Run();
 
-public static class DiagnosticsConfig
-{
-    public const string ServiceName = "OmidService";
-    public static ActivitySource ActivitySource = new(ServiceName);
-}
