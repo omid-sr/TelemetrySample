@@ -1,7 +1,3 @@
-using System.Diagnostics;
-using System.Reflection.PortableExecutable;
-using A;
-using Microsoft.Extensions.Options;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Instrumentation.AspNetCore;
 using OpenTelemetry.Resources;
@@ -18,13 +14,18 @@ builder.Services.AddSwaggerGen();
 
 
 
-var tracingExporter = builder.Configuration.GetValue<string>("OpenTelemetry:UseTracingExporter").ToLowerInvariant();
 
+var serviceName = builder.Configuration.GetValue<string>("OpenTelemetry:ServiceName");
+var attributes = new List<KeyValuePair<string, object>>
+{
+    new KeyValuePair<string, object>("deployment.environment", serviceName),
+    new KeyValuePair<string, object>("host.name", Environment.MachineName)
+};
 
 Action<ResourceBuilder> configureResource = r => r.AddService(
-    serviceName: builder.Configuration.GetValue<string>("OpenTelemetry:ServiceName"),
+    serviceName: serviceName,
     serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
-    serviceInstanceId: Environment.MachineName);
+    serviceInstanceId: Environment.MachineName).AddAttributes(attributes).AddEnvironmentVariableDetector();
 
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(configureResource)
@@ -47,6 +48,7 @@ builder.Services.AddOpenTelemetry()
         builder.Services.Configure<AspNetCoreInstrumentationOptions>(
             builder.Configuration.GetSection("OpenTelemetry:AspNetCoreInstrumentation"));
 
+        var tracingExporter = builder.Configuration.GetValue<string>("OpenTelemetry:UseTracingExporter").ToLowerInvariant();
         switch (tracingExporter)
         {
             case "jaeger":
