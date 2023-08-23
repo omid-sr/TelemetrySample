@@ -1,24 +1,55 @@
 using OpenTelemetry.Resources;
 using System.Diagnostics;
+using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Instrumentation.AspNetCore;
 using OpenTelemetry.Trace;
+using Microsoft.Extensions.Configuration;
 
 public static class CustomOpenTelemetry
 {
-    private const string ServiceName = "Sima.Allocation.Agent";
-    public static readonly ActivitySource ActivitySource = new ActivitySource(ServiceName);
+    private const string ServiceName = "Omid.Test";
+
+    public static void AddCustomTracing2(this IServiceCollection services, IConfiguration configuration)
+    {
+
+        var attributes = new List<KeyValuePair<string, object>>
+        {
+            new("deployment.environment", ServiceName),
+            new("host.name", Environment.MachineName)
+        };
+
+        Action<ResourceBuilder> configureResource = r => r.AddService(
+            serviceName: ServiceName,
+            serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
+            serviceInstanceId: Environment.MachineName).AddAttributes(attributes).AddEnvironmentVariableDetector();
+        using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+            .AddSource("Samples.SampleClient", "Samples.SampleServer")
+            .ConfigureResource(r => r.AddService("zipkin-test"))
+            .AddOtlpExporter(otlpOptions =>
+            {
+                var serverUrl = "http://st-elk-stapp:8200";
+                var token = "aVdDcjA0a0J1YUJXenBrdjg3ejU6bDJ5Y2E4ZmJSY0NOUXRVVC1HNExzQQ==";
+
+                otlpOptions.Endpoint = new Uri(serverUrl);
+                otlpOptions.Headers = $"Authorization= ApiKey {token}";
+
+
+                // otlpOptions.Endpoint = new Uri(configuration.GetValue<string>("OpenTelemetry:Otlp:Endpoint"));
+
+            })
+            .Build();
+    }
     public static void AddCustomTracing(this IServiceCollection services, IConfiguration configuration)
     {
-        var serviceName = configuration.GetValue<string>("OpenTelemetry:ServiceName");
         var attributes = new List<KeyValuePair<string, object>>
 {
-    new KeyValuePair<string, object>("deployment.environment", serviceName),
-    new KeyValuePair<string, object>("host.name", Environment.MachineName)
+    new("deployment.environment", ServiceName),
+    new("host.name", Environment.MachineName)
 };
 
         Action<ResourceBuilder> configureResource = r => r.AddService(
-            serviceName: serviceName,
+            serviceName: ServiceName,
             serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
             serviceInstanceId: Environment.MachineName).AddAttributes(attributes).AddEnvironmentVariableDetector();
 
@@ -58,6 +89,9 @@ public static class CustomOpenTelemetry
                             services.AddHttpClient("JaegerExporter",
                                 configureClient: (client) => client.DefaultRequestHeaders.Add("X-MyCustomHeader", "value"));
                         });
+
+
+
                         break;
 
                     case "zipkin":
@@ -75,11 +109,15 @@ public static class CustomOpenTelemetry
                         //here we are using elastic apm with otlp exporter
                         traceBuilder.AddOtlpExporter(otlpOptions =>
                         {
-                            var serverUrl = configuration.GetValue<string>("OpenTelemetry:Otlp:ElasticApm:ServerUrl");
-                            var token = configuration.GetValue<string>("OpenTelemetry:Otlp:ElasticApm:SecretToken");
+                            var serverUrl = "http://st-elk-stapp:8200";
+                            var token = "aVdDcjA0a0J1YUJXenBrdjg3ejU6bDJ5Y2E4ZmJSY0NOUXRVVC1HNExzQQ==";
 
                             otlpOptions.Endpoint = new Uri(serverUrl);
                             otlpOptions.Headers = $"Authorization= ApiKey {token}";
+
+
+                            // otlpOptions.Endpoint = new Uri(configuration.GetValue<string>("OpenTelemetry:Otlp:Endpoint"));
+
                         });
                         break;
 
