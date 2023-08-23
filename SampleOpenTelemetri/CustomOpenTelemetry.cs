@@ -10,7 +10,7 @@ public static class CustomOpenTelemetry
 {
     private const string ServiceName = "Omid.Test";
 
-    public static void AddCustomTracing2(this IServiceCollection services, IConfiguration configuration)
+    public static void AddCustomTracing2()
     {
 
         var attributes = new List<KeyValuePair<string, object>>
@@ -24,8 +24,7 @@ public static class CustomOpenTelemetry
             serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
             serviceInstanceId: Environment.MachineName).AddAttributes(attributes).AddEnvironmentVariableDetector();
         using var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddSource("Samples.SampleClient", "Samples.SampleServer")
-            .ConfigureResource(r => r.AddService("zipkin-test"))
+            .ConfigureResource(configureResource)
             .AddOtlpExporter(otlpOptions =>
             {
                 var serverUrl = "http://st-elk-stapp:8200";
@@ -71,8 +70,7 @@ public static class CustomOpenTelemetry
                     .AddSqlClientInstrumentation();
 
                 // Use IConfiguration binding for AspNetCore instrumentation options.
-                services.Configure<AspNetCoreInstrumentationOptions>(
-                    configuration.GetSection("OpenTelemetry:AspNetCoreInstrumentation"));
+                services.Configure<AspNetCoreInstrumentationOptions>(configuration.GetSection("OpenTelemetry:AspNetCoreInstrumentation"));
 
                 var tracingExporter = configuration.GetValue<string>("OpenTelemetry:UseTracingExporter").ToLowerInvariant();
                 switch (tracingExporter)

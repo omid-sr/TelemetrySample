@@ -13,7 +13,7 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 
-builder.Services.AddCustomTracing(builder.Configuration);
+//builder.Services.AddCustomTracing(builder.Configuration);
 builder.Services.AddHostedService<ConsumeRabbitMQHostedService>();
 
 

@@ -1,8 +1,9 @@
-using System.Diagnostics;
-using System.Text;
+using OpenTelemetry;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System.Text;
 
 namespace SampleOpenTelemetri
 {
@@ -14,7 +15,7 @@ namespace SampleOpenTelemetri
 
         public ConsumeRabbitMQHostedService(ILoggerFactory loggerFactory)
         {
-            this._logger = loggerFactory.CreateLogger<ConsumeRabbitMQHostedService>();
+            _logger = loggerFactory.CreateLogger<ConsumeRabbitMQHostedService>();
             InitRabbitMQ();
         }
 
@@ -51,30 +52,53 @@ namespace SampleOpenTelemetri
             var consumer = new EventingBasicConsumer(_channel);
             consumer.Received += (ch, ea) =>
             {
-                using var source = new ActivitySource("Begin Rabbit Consuming");
 
-                var tracer = TracerProvider.Default.GetTracer("Omid.Test");
-                using (var parentSpan = tracer.StartActiveSpan("parent span"))
+                var attributes = new List<KeyValuePair<string, object>>
                 {
-                    parentSpan.SetAttribute("mystring", "value");
-                    parentSpan.SetAttribute("myint", 100);
-                    parentSpan.SetAttribute("mydouble", 101.089);
-                    parentSpan.SetAttribute("mybool", true);
-                    parentSpan.UpdateName("parent span new name");
+                    new("deployment.environment", ServiceName),
+                    new("host.name", Environment.MachineName)
+                };
 
-                    var childSpan = tracer.StartSpan("child span");
-                    childSpan.AddEvent("sample event").SetAttribute("ch", "value").SetAttribute("more", "attributes");
-                    childSpan.SetStatus(Status.Ok);
-                    childSpan.End();
-                }
-                using (var activity = source.StartActivity("Converting data from byte to string", ActivityKind.Client))
+                Action<ResourceBuilder> configureResource = r => r.AddService(
+                    serviceName: ServiceName,
+                    serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
+                    serviceInstanceId: Environment.MachineName)
+                    .AddEnvironmentVariableDetector();
+
+
+
+
+                using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+                    .ConfigureResource(configureResource)
+                    .AddSource("ConsumeRabbitMQHostedService")
+                    .AddAspNetCoreInstrumentation()
+                    .AddSqlClientInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddOtlpExporter(otlpOptions =>
+                    {
+                        var serverUrl = "http://st-elk-stapp:8200";
+                        var token = "aVdDcjA0a0J1YUJXenBrdjg3ejU6bDJ5Y2E4ZmJSY0NOUXRVVC1HNExzQQ==";
+
+                        otlpOptions.Endpoint = new Uri(serverUrl);
+                        otlpOptions.Headers = $"Authorization= ApiKey {token}";
+                    })
+                    .Build();
+
+                var tracer = tracerProvider.GetTracer("ConsumeRabbitMQHostedService");
+
+                using (var span = tracer.StartActiveSpan("rabbit-Consume"))
                 {
-                    // received message  
-                    var content = System.Text.Encoding.UTF8.GetString(ea.Body.ToArray());
-                    activity?.SetTag("content", content);
+                    span.SetAttribute("custom-attribute", "attribute-value");
+
+                    // Your code here
+                    var content = Encoding.UTF8.GetString(ea.Body.ToArray());
                     // handle the received message  
                     HandleMessage(content);
+
                 }
+
+                // received message
+
 
                 _channel.BasicAck(ea.DeliveryTag, false);
             };
@@ -88,8 +112,12 @@ namespace SampleOpenTelemetri
             return Task.CompletedTask;
         }
 
+        public string ServiceName = "Omid_Test";
+
         private void HandleMessage(string content)
         {
+
+            Thread.Sleep(TimeSpan.FromSeconds(1));
             // we just print this message   
             _logger.LogInformation($"consumer received {content}");
         }

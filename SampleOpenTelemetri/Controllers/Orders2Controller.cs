@@ -7,11 +7,11 @@ namespace Producer.Controllers
 {
     [ApiController]
     [Route("[controller]")]
-    public class OrdersController : ControllerBase
+    public class Orders2Controller : ControllerBase
     {
         private readonly IMessageProducer _messagePublisher;
 
-        public OrdersController(IMessageProducer messagePublisher)
+        public Orders2Controller(IMessageProducer messagePublisher)
         {
             _messagePublisher = messagePublisher;
         }
