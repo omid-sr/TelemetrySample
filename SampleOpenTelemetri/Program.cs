@@ -1,5 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
 using Producer.RabbitMQ;
 using SampleOpenTelemetri;
+using SampleOpenTelemetri.Model;
 using SampleOpenTelemetri.RabbitMQ;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +14,7 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.Configure<OpenTelemetryConfiguration>(builder.Configuration.GetSection(OpenTelemetryConfiguration.ConfigName));
 
 //builder.Services.AddCustomTracing(builder.Configuration);
 builder.Services.AddHostedService<ConsumeRabbitMQHostedService>();

@@ -1,20 +1,24 @@
+using Microsoft.Extensions.Options;
 using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using SampleOpenTelemetri.Model;
 using System.Text;
 
 namespace SampleOpenTelemetri
 {
     public class ConsumeRabbitMQHostedService : BackgroundService
     {
+        private readonly OpenTelemetryConfiguration _openTelemetryConfiguration;
         private readonly ILogger _logger;
         private IConnection _connection;
         private IModel _channel;
 
-        public ConsumeRabbitMQHostedService(ILoggerFactory loggerFactory)
+        public ConsumeRabbitMQHostedService(ILoggerFactory loggerFactory, IOptionsMonitor<OpenTelemetryConfiguration> openTelemetryConfiguration)
         {
+            _openTelemetryConfiguration = openTelemetryConfiguration.CurrentValue;
             _logger = loggerFactory.CreateLogger<ConsumeRabbitMQHostedService>();
             InitRabbitMQ();
         }
@@ -52,50 +56,48 @@ namespace SampleOpenTelemetri
             var consumer = new EventingBasicConsumer(_channel);
             consumer.Received += (ch, ea) =>
             {
-
                 var attributes = new List<KeyValuePair<string, object>>
                 {
-                    new("deployment.environment", ServiceName),
+                    new("deployment.environment", "Sima"),
                     new("host.name", Environment.MachineName)
                 };
 
                 Action<ResourceBuilder> configureResource = r => r.AddService(
-                    serviceName: ServiceName,
-                    serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
-                    serviceInstanceId: Environment.MachineName)
+                        serviceName: ServiceName,
+                        serviceVersion: typeof(Program).Assembly.GetName().Version?.ToString() ?? "unknown",
+                        serviceInstanceId: Environment.MachineName)
+                    .AddAttributes(attributes)
                     .AddEnvironmentVariableDetector();
 
+                //using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+                //    .ConfigureResource(configureResource)
+                //    .AddSource("ConsumeRabbitMQHostedService")
+                //    .AddAspNetCoreInstrumentation()
+                //    .AddSqlClientInstrumentation()
+                //    .AddHttpClientInstrumentation()
+                //    .AddOtlpExporter(otlpOptions =>
+                //    {
+                //        var serverUrl = "http://st-elk-stapp:8200";
+                //        var token = "aVdDcjA0a0J1YUJXenBrdjg3ejU6bDJ5Y2E4ZmJSY0NOUXRVVC1HNExzQQ==";
 
+                //        otlpOptions.Endpoint = new Uri(serverUrl);
+                //        otlpOptions.Headers = $"Authorization= ApiKey {token}";
+                //    })
+                //    .Build();
 
+                //var tracer = tracerProvider.GetTracer("ConsumeRabbitMQHostedService");
 
-                using var tracerProvider = Sdk.CreateTracerProviderBuilder()
-                    .ConfigureResource(configureResource)
-                    .AddSource("ConsumeRabbitMQHostedService")
-                    .AddAspNetCoreInstrumentation()
-                    .AddSqlClientInstrumentation()
-                    .AddHttpClientInstrumentation()
-                    .AddOtlpExporter(otlpOptions =>
-                    {
-                        var serverUrl = "http://st-elk-stapp:8200";
-                        var token = "aVdDcjA0a0J1YUJXenBrdjg3ejU6bDJ5Y2E4ZmJSY0NOUXRVVC1HNExzQQ==";
+                using var traceBuilder = new OpenTelemetryTraceBuilder(_openTelemetryConfiguration);
 
-                        otlpOptions.Endpoint = new Uri(serverUrl);
-                        otlpOptions.Headers = $"Authorization= ApiKey {token}";
-                    })
-                    .Build();
+                var tracer = traceBuilder.BuildTracer("worker 1");
 
-                var tracer = tracerProvider.GetTracer("ConsumeRabbitMQHostedService");
-
-                using (var span = tracer.StartActiveSpan("rabbit-Consume"))
+                using (var span = tracer.StartActiveSpan("ExecuteAsync-rabbit-Consume"))
                 {
-                    span.SetAttribute("custom-attribute", "attribute-value");
 
-                    // Your code here
                     var content = Encoding.UTF8.GetString(ea.Body.ToArray());
-                    // handle the received message  
                     HandleMessage(content);
-
                 }
+
 
                 // received message
 
@@ -117,9 +119,14 @@ namespace SampleOpenTelemetri
         private void HandleMessage(string content)
         {
 
-            Thread.Sleep(TimeSpan.FromSeconds(1));
-            // we just print this message   
-            _logger.LogInformation($"consumer received {content}");
+            using var traceBuilder = new OpenTelemetryTraceBuilder(_openTelemetryConfiguration);
+
+            var tracer = traceBuilder.BuildTracer("worker 2");
+            using (var span = tracer.StartActiveSpan("HandleMessage"))
+            {
+                Thread.Sleep(TimeSpan.FromSeconds(1));
+                _logger.LogInformation($"consumer received {content}");
+            }
         }
 
         private void OnConsumerConsumerCancelled(object sender, ConsumerEventArgs e) { }
