@@ -8,13 +8,7 @@ public sealed class OpenTelemetryConfiguration
     public string EnvironmentName { get; set; }
     public string ServiceName { get; set; }
     public string Environment { get; set; }
-    public Aspnetcoreinstrumentation AspNetCoreInstrumentation { get; set; }
     public OTLPConfigs Otlp { get; set; }
-
-    public class Aspnetcoreinstrumentation
-    {
-        public string RecordException { get; set; }
-    }
 
     public class OTLPConfigs
     {

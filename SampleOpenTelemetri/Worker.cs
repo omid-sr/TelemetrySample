@@ -69,27 +69,26 @@ namespace SampleOpenTelemetri
                     .AddAttributes(attributes)
                     .AddEnvironmentVariableDetector();
 
-                //using var tracerProvider = Sdk.CreateTracerProviderBuilder()
-                //    .ConfigureResource(configureResource)
-                //    .AddSource("ConsumeRabbitMQHostedService")
-                //    .AddAspNetCoreInstrumentation()
-                //    .AddSqlClientInstrumentation()
-                //    .AddHttpClientInstrumentation()
-                //    .AddOtlpExporter(otlpOptions =>
-                //    {
-                //        var serverUrl = "http://st-elk-stapp:8200";
-                //        var token = "aVdDcjA0a0J1YUJXenBrdjg3ejU6bDJ5Y2E4ZmJSY0NOUXRVVC1HNExzQQ==";
+                using var tracerProvider = Sdk.CreateTracerProviderBuilder()
+                    .ConfigureResource(configureResource)
+                    .AddSource("ConsumeRabbitMQHostedService")
+                    .AddAspNetCoreInstrumentation()
+                    .AddSqlClientInstrumentation()
+                    .AddHttpClientInstrumentation()
+                    .AddOtlpExporter(otlpOptions =>
+                    {
+                        var serverUrl = "http://st-elk-stapp:8200";
+                        var token = "aVdDcjA0a0J1YUJXenBrdjg3ejU6bDJ5Y2E4ZmJSY0NOUXRVVC1HNExzQQ==";
 
-                //        otlpOptions.Endpoint = new Uri(serverUrl);
-                //        otlpOptions.Headers = $"Authorization= ApiKey {token}";
-                //    })
-                //    .Build();
+                        otlpOptions.Endpoint = new Uri(serverUrl);
+                        otlpOptions.Headers = $"Authorization= ApiKey {token}";
+                    })
+                    .Build();
 
-                //var tracer = tracerProvider.GetTracer("ConsumeRabbitMQHostedService");
+                var tracer = tracerProvider.GetTracer("ConsumeRabbitMQHostedService");
 
                 using var traceBuilder = new OpenTelemetryTraceBuilder(_openTelemetryConfiguration);
 
-                var tracer = traceBuilder.BuildTracer("worker 1");
 
                 using (var span = tracer.StartActiveSpan("ExecuteAsync-rabbit-Consume"))
                 {

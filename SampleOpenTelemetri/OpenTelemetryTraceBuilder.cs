@@ -28,30 +28,38 @@ public sealed class OpenTelemetryTraceBuilder : IDisposable
             serviceInstanceId: Environment.MachineName).AddAttributes(attributes).AddEnvironmentVariableDetector();
 
 
-        _tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .ConfigureResource(configureResource)
-            .AddSource(workderName)
-            .AddAspNetCoreInstrumentation()
-            .AddSqlClientInstrumentation()
-            .AddHttpClientInstrumentation()
-            .AddOtlpExporter(otlpOptions =>
+        TracerProviderBuilder builder = Sdk.CreateTracerProviderBuilder()
+                .ConfigureResource(configureResource)
+                .AddSource(workderName)
+                .AddAspNetCoreInstrumentation()
+                .AddSqlClientInstrumentation()
+                .AddHttpClientInstrumentation()
+            ;
+
+        _tracerProvider = AddExporter(builder).Build();
+
+        return _tracerProvider.GetTracer(workderName);
+
+    }
+    public TracerProviderBuilder AddExporter(TracerProviderBuilder builder)
+    {
+        if (_openTelemetryConfiguration.Environment == "Production" || _openTelemetryConfiguration.Environment == "Stage")
+        {
+            return builder.AddOtlpExporter(otlpOptions =>
             {
                 var serverUrl = _openTelemetryConfiguration.Otlp.ElasticApm.ServerUrl;
                 var token = _openTelemetryConfiguration.Otlp.ElasticApm.SecretToken;
 
                 otlpOptions.Endpoint = new Uri(serverUrl);
                 otlpOptions.Headers = $"Authorization= ApiKey {token}";
-            })
-            .Build();
+            });
+        }
 
-        return _tracerProvider.GetTracer(workderName);
-
+        return builder.AddConsoleExporter();
     }
-
 
     public void Dispose()
     {
-
         _tracerProvider.Dispose();
     }
 }
